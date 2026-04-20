@@ -1,0 +1,12 @@
+.DS_Store
+*.local
+.env
+.env.*
+
+# quiz-app
+quiz-app/node_modules
+quiz-app/dist
+
+# logs
+*.log
+npm-debug.log*

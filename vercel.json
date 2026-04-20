@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "cd quiz-app && npm ci",
+  "buildCommand": "cd quiz-app && npm run build",
+  "outputDirectory": "quiz-app/dist"
+}
