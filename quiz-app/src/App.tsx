@@ -197,7 +197,7 @@ export default function App() {
   if (!bank) {
     return (
       <div className="quiz-app">
-        <p className="sub">Loading question bank…</p>
+        <div className="quiz-loading">Loading question bank</div>
       </div>
     );
   }
@@ -227,39 +227,44 @@ export default function App() {
         </p>
 
         {summary && summary.totalAttempts > 0 && (
-          <div className="quiz-card progress-summary">
-            <h2 className="progress-heading">Your progress</h2>
-            <ul className="progress-stats">
-              <li>
-                <strong>{summary.questionsTouched}</strong> question
-                {summary.questionsTouched === 1 ? "" : "s"} practiced
-              </li>
-              <li>
-                <strong>{summary.totalAttempts}</strong> checks ·{" "}
-                <strong>{summary.totalCorrect}</strong> correct ·{" "}
-                <strong>{summary.totalWrong}</strong> missed
-              </li>
-              {summary.overallAccuracy != null && (
-                <li>
-                  Overall accuracy:{" "}
-                  <strong>{(summary.overallAccuracy * 100).toFixed(1)}%</strong>
-                </li>
-              )}
-              {summary.idsWithMistakes > 0 && (
-                <li className="progress-alert">
-                  <strong>{summary.idsWithMistakes}</strong> question
-                  {summary.idsWithMistakes === 1 ? "" : "s"} with at least one
-                  miss — drill them below or use “Only missed questions”.
-                </li>
-              )}
-            </ul>
+          <div className="quiz-section">
+            <div className="quiz-section-title">Your progress</div>
+            <div className="stat-row">
+              <div className="stat-item">
+                <span className="stat-value">{summary.questionsTouched}</span>
+                <span className="stat-label">Practiced</span>
+              </div>
+              <div className="stat-item success">
+                <span className="stat-value">{summary.totalCorrect}</span>
+                <span className="stat-label">Correct</span>
+              </div>
+              <div className="stat-item error">
+                <span className="stat-value">{summary.totalWrong}</span>
+                <span className="stat-label">Missed</span>
+              </div>
+              <div className="stat-item accent">
+                <span className="stat-value">
+                  {summary.overallAccuracy != null
+                    ? `${(summary.overallAccuracy * 100).toFixed(0)}%`
+                    : "—"}
+                </span>
+                <span className="stat-label">Accuracy</span>
+              </div>
+            </div>
+            {summary.idsWithMistakes > 0 && (
+              <div className="alert-box">
+                <strong>{summary.idsWithMistakes}</strong> question
+                {summary.idsWithMistakes === 1 ? "" : "s"} with at least one
+                miss — drill them below or use “Only missed questions”.
+              </div>
+            )}
           </div>
         )}
 
         {weakRows.length > 0 && (
-          <div className="quiz-card progress-weak">
-            <h2 className="progress-heading">Where you miss most</h2>
-            <p className="quiz-hint">
+          <div className="quiz-section">
+            <div className="quiz-section-title">Where you miss most</div>
+            <p className="quiz-hint" style={{ marginBottom: "0.75rem" }}>
               Sorted by lowest accuracy (then most misses). Question IDs from
               the bank.
             </p>
@@ -297,8 +302,8 @@ export default function App() {
           </div>
         )}
 
-        <div className="quiz-card quiz-setup">
-          <h2 className="progress-heading">Start session</h2>
+        <div className="quiz-setup">
+          <div className="quiz-section-title">Start session</div>
           <div className="quiz-row">
             <label className="inline">
               <input
@@ -420,10 +425,19 @@ export default function App() {
 
   const showResult = checked;
   const isMulti = q.selectCount > 1;
+  const progressPct = deck.length > 0 ? ((idx + (checked ? 1 : 0)) / deck.length) * 100 : 0;
 
   return (
     <div className="quiz-app">
       <h1>GH-300 practice</h1>
+
+      <div className="quiz-progress-bar">
+        <div
+          className="quiz-progress-fill"
+          style={{ width: `${progressPct}%` }}
+        />
+      </div>
+
       <div className="quiz-progress">
         <span>
           Question {idx + 1} of {deck.length} · Q-ID {q.id}
@@ -433,13 +447,15 @@ export default function App() {
           {completed > 0 ? `${correctCount} / ${completed}` : "—"}
         </span>
       </div>
+
       {sessionStats && sessionStats.attempts > 0 && (
-        <p className="quiz-history">
+        <div className="quiz-history">
           Your history on Q{q.id}:{" "}
           <strong>{sessionStats.correct}</strong> / {sessionStats.attempts}{" "}
-          correct · <strong>{sessionStats.wrong}</strong> missed (all visits)
-        </p>
+          correct · <strong>{sessionStats.wrong}</strong> missed
+        </div>
       )}
+
       <p className="quiz-stem">{q.stem}</p>
       <p className="quiz-hint">
         {isMulti
