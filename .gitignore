@@ -10,3 +10,8 @@ quiz-app/dist
 # logs
 *.log
 npm-debug.log*
+
+# SwarmForge (multi-agent worktrees + generated tools; keep agent_context/ versioned if you want briefs in git)
+.swarmforge/
+.worktrees/
+swarmtools/

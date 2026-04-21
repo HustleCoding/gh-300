@@ -1,0 +1,4 @@
+SwarmForge smoke-test constitution.
+
+Keep behavior minimal: this run only verifies that SwarmForge can launch the Cursor CLI
+in tmux with the layered prompts. Do not run destructive shell commands.

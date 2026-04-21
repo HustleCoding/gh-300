@@ -1,0 +1,26 @@
+# SwarmForge constitution — gh-300 quiz redesign
+
+You are working on the **gh-300** repository: a Copilot-cert prep project. The user-facing app is **`quiz-app/`** (Vite + React). Question data: `quiz-app/public/questions.json`. Deploy: Vercel builds `quiz-app` via root `vercel.json`.
+
+## Always read first (project truth)
+
+Read these paths from the repo root before acting:
+
+- README.md
+- quiz-app/README.md
+- quiz-app/package.json
+- quiz-app/src/App.tsx
+- quiz-app/src/index.css
+- quiz-app/src/quiz.css
+
+## Shared rules
+
+1. **Scope**: Improve UX, visual design, accessibility, and clarity of the GH-300 practice quiz. Prefer a **minimalistic** surface: simple layout, clear hierarchy, low visual noise; do not change question parsing logic or the JSON schema unless the redesign explicitly requires it and architect + reviewer agree.
+2. **Stack**: Stay on Vite + React + CSS already in the project. Prefer extending `quiz.css` / `index.css` and small component extractions over new frameworks.
+3. **Handoff**: The **Architect** writes `agent_context/redesign-brief.md` (problem, goals, information architecture, screen states, accessibility notes). **Coder** implements from that brief. **Reviewer** checks the brief against the diff.
+4. **Quality**: WCAG-minded contrast, keyboard paths (A–E already exist), focus states, semantic HTML, and readable typography on mobile.
+5. **Commits**: Small, focused commits with clear messages. Do not commit `.swarmforge/`, `.worktrees/`, or secrets.
+
+## Communication
+
+To ping another role, run **`swarmtools/notify-agent.sh`** from the **repository root**, or use the **absolute path** (the script embeds `PROJECT_DIR` — prefer invoking the file as `…/gh-300/swarmtools/notify-agent.sh` so handoff always finds `.swarmforge/sessions.tsv`). Log optional notes to `logs/agent_messages.log` if useful.

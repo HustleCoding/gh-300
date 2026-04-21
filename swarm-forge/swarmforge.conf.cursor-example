@@ -1,0 +1,21 @@
+# Example swarmforge.conf using the Cursor Agent CLI.
+# Copy to your project as swarmforge/swarmforge.conf and add constitution.prompt + *.prompt files.
+#
+# Prerequisites:
+#   - tmux, git; zsh runs swarmforge.sh
+#   - Cursor shell command on PATH (Cursor: Cmd+Shift+P → "Shell Command: Install 'cursor' command in PATH")
+#   - cursor agent installed (first run may download cursor-agent)
+#
+# Optional env when launching:
+#   SWARMFORGE_CURSOR_MODEL=composer-2  /path/to/swarmforge.sh /path/to/your/project
+#
+# Open agent UIs in Ghostty (same app, one window per role) instead of Terminal.app:
+#   SWARMFORGE_TERMINAL=ghostty
+# If you start swarmforge.sh from inside Ghostty (TERM_PROGRAM=ghostty), Ghostty is used automatically.
+# Force Apple Terminal: SWARMFORGE_TERMINAL=apple
+# Non-default app path: SWARMFORGE_GHOSTTY_APP="$HOME/Applications/Ghostty.app"
+
+window architect cursor master
+window coder cursor coder
+window reviewer cursor reviewer
+window logger none none
