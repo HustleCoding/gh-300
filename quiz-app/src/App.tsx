@@ -12,6 +12,9 @@ import {
   clearProgress,
   type ProgressStore,
 } from "./progressStorage";
+import { QuizMenu, type RangeMode } from "./QuizMenu";
+import { QuizSession } from "./QuizSession";
+import { QuizSessionComplete } from "./QuizSessionComplete";
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -28,8 +31,6 @@ function sameSet(a: Set<string>, b: Set<string>): boolean {
   return true;
 }
 
-type RangeMode = "all" | "batch" | "custom";
-
 export default function App() {
   const [bank, setBank] = useState<QuestionBank | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -45,6 +46,10 @@ export default function App() {
   const [customMax, setCustomMax] = useState(148);
   const [shuffleOn, setShuffleOn] = useState(false);
   const [practiceWeakOnly, setPracticeWeakOnly] = useState(false);
+  const [sessionSummary, setSessionSummary] = useState<{
+    correctCount: number;
+    total: number;
+  } | null>(null);
   const [progress, setProgress] = useState<ProgressStore>(() => {
     if (typeof window === "undefined") return emptyStore();
     return loadProgress();
@@ -103,6 +108,7 @@ export default function App() {
   }, [bank, progress]);
 
   const startQuiz = () => {
+    setSessionSummary(null);
     let list = buildFilteredList();
     if (list.length === 0) return;
     if (shuffleOn) list = shuffle(list);
@@ -115,6 +121,7 @@ export default function App() {
   };
 
   const exitQuiz = () => {
+    setSessionSummary(null);
     setStarted(false);
   };
 
@@ -151,6 +158,7 @@ export default function App() {
 
   const nextQ = () => {
     if (idx >= deck.length - 1) {
+      setSessionSummary({ correctCount, total: deck.length });
       setStarted(false);
       return;
     }
@@ -180,16 +188,36 @@ export default function App() {
 
   const sessionStats = q ? getStatsForId(progress, q.id) : undefined;
 
+  const filtered = bank ? buildFilteredList() : [];
+  const rangeSelectValue =
+    rangeMode === "all"
+      ? "all"
+      : rangeMode === "custom"
+        ? "custom"
+        : `batch:${batchIdx}`;
+
+  const onRangeSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const v = e.target.value;
+    if (v === "all") setRangeMode("all");
+    else if (v === "custom") setRangeMode("custom");
+    else {
+      setRangeMode("batch");
+      setBatchIdx(Number(v.replace("batch:", "")));
+    }
+  };
+
   if (loadError) {
     return (
       <div className="quiz-app">
-        <p className="quiz-error">
-          Could not load <code>public/questions.json</code>: {loadError}
-        </p>
-        <p className="sub">
-          Run <code>npm run generate-questions</code> in <code>quiz-app</code>{" "}
-          after placing <code>GH-300.pdf</code> in the repo root.
-        </p>
+        <main className="quiz-main quiz-main--bare">
+          <p className="quiz-error">
+            Could not load <code>public/questions.json</code>: {loadError}
+          </p>
+          <p className="sub">
+            Run <code>npm run generate-questions</code> in <code>quiz-app</code>{" "}
+            after placing <code>GH-300.pdf</code> in the repo root.
+          </p>
+        </main>
       </div>
     );
   }
@@ -197,226 +225,57 @@ export default function App() {
   if (!bank) {
     return (
       <div className="quiz-app">
-        <div className="quiz-loading">Loading question bank</div>
+        <main className="quiz-main quiz-main--bare" aria-busy="true">
+          <p className="quiz-loading">Loading question bank</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (sessionSummary) {
+    return (
+      <div className="quiz-app">
+        <QuizSessionComplete
+          correctCount={sessionSummary.correctCount}
+          totalQuestions={sessionSummary.total}
+          onPracticeAgain={startQuiz}
+          onBackToSetup={() => setSessionSummary(null)}
+        />
       </div>
     );
   }
 
   if (!started) {
-    const filtered = buildFilteredList();
-    const rangeSelectValue =
-      rangeMode === "all"
-        ? "all"
-        : rangeMode === "custom"
-          ? "custom"
-          : `batch:${batchIdx}`;
     return (
       <div className="quiz-app">
-        <h1>GH-300 practice quiz</h1>
-        <p className="sub">
-          {bank.questionCount} questions loaded from the GH-300 PDF source.
-          Third-party answers — verify against{" "}
-          <a
-            href="https://docs.github.com/en/copilot"
-            target="_blank"
-            rel="noreferrer"
-          >
-            GitHub Docs
-          </a>
-          . Progress is saved in this browser (localStorage).
-        </p>
-
-        {summary && summary.totalAttempts > 0 && (
-          <div className="quiz-section">
-            <div className="quiz-section-title">Your progress</div>
-            <div className="stat-row">
-              <div className="stat-item">
-                <span className="stat-value">{summary.questionsTouched}</span>
-                <span className="stat-label">Practiced</span>
-              </div>
-              <div className="stat-item success">
-                <span className="stat-value">{summary.totalCorrect}</span>
-                <span className="stat-label">Correct</span>
-              </div>
-              <div className="stat-item error">
-                <span className="stat-value">{summary.totalWrong}</span>
-                <span className="stat-label">Missed</span>
-              </div>
-              <div className="stat-item accent">
-                <span className="stat-value">
-                  {summary.overallAccuracy != null
-                    ? `${(summary.overallAccuracy * 100).toFixed(0)}%`
-                    : "—"}
-                </span>
-                <span className="stat-label">Accuracy</span>
-              </div>
-            </div>
-            {summary.idsWithMistakes > 0 && (
-              <div className="alert-box">
-                <strong>{summary.idsWithMistakes}</strong> question
-                {summary.idsWithMistakes === 1 ? "" : "s"} with at least one
-                miss — drill them below or use “Only missed questions”.
-              </div>
-            )}
-          </div>
-        )}
-
-        {weakRows.length > 0 && (
-          <div className="quiz-section">
-            <div className="quiz-section-title">Where you miss most</div>
-            <p className="quiz-hint" style={{ marginBottom: "0.75rem" }}>
-              Sorted by lowest accuracy (then most misses). Question IDs from
-              the bank.
-            </p>
-            <div className="progress-table-wrap">
-              <table className="progress-table">
-                <thead>
-                  <tr>
-                    <th>Q#</th>
-                    <th>Attempts</th>
-                    <th>Misses</th>
-                    <th>Accuracy</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {weakRows.slice(0, 25).map((row) => (
-                    <tr key={row.id}>
-                      <td>{row.id}</td>
-                      <td>{row.attempts}</td>
-                      <td>{row.wrong}</td>
-                      <td>
-                        {row.accuracy != null
-                          ? `${(row.accuracy * 100).toFixed(0)}%`
-                          : "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {weakRows.length > 25 && (
-              <p className="quiz-hint">
-                Showing 25 of {weakRows.length} questions with misses.
-              </p>
-            )}
-          </div>
-        )}
-
-        <div className="quiz-setup">
-          <div className="quiz-section-title">Start session</div>
-          <div className="quiz-row">
-            <label className="inline">
-              <input
-                type="checkbox"
-                checked={shuffleOn}
-                onChange={(e) => setShuffleOn(e.target.checked)}
-              />
-              Shuffle order
-            </label>
-            <label className="inline">
-              <input
-                type="checkbox"
-                checked={practiceWeakOnly}
-                onChange={(e) => setPracticeWeakOnly(e.target.checked)}
-                disabled={weakRows.length === 0}
-              />
-              Only questions I’ve missed before ({weakRows.length} in bank
-              range)
-            </label>
-          </div>
-
-          <label>Question set</label>
-          <select
-            value={rangeSelectValue}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "all") setRangeMode("all");
-              else if (v === "custom") setRangeMode("custom");
-              else {
-                setRangeMode("batch");
-                setBatchIdx(Number(v.replace("batch:", "")));
-              }
-            }}
-          >
-            <option value="all">All parsed questions</option>
-            {BATCH_PRESETS.map((b, i) => (
-              <option key={b.label} value={`batch:${i}`}>
-                {b.label}
-              </option>
-            ))}
-            <option value="custom">Custom question ID range</option>
-          </select>
-
-          {rangeMode === "custom" && (
-            <div className="quiz-row">
-              <div>
-                <label>Min ID</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={999}
-                  value={customMin}
-                  onChange={(e) =>
-                    setCustomMin(Number(e.target.value) || 1)
-                  }
-                />
-              </div>
-              <div>
-                <label>Max ID</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={999}
-                  value={customMax}
-                  onChange={(e) =>
-                    setCustomMax(Number(e.target.value) || 148)
-                  }
-                />
-              </div>
-            </div>
-          )}
-
-          <p className="quiz-hint">
-            This session will include <strong>{filtered.length}</strong> question
-            {filtered.length === 1 ? "" : "s"}.
-            {practiceWeakOnly && filtered.length === 0 && (
-              <span className="quiz-error-inline">
-                {" "}
-                No missed questions in this range — turn off the filter or
-                practice more.
-              </span>
-            )}
-          </p>
-
-          <div className="quiz-actions">
-            <button
-              type="button"
-              className="quiz-btn primary"
-              disabled={filtered.length === 0}
-              onClick={startQuiz}
-            >
-              Start quiz
-            </button>
-            {summary && summary.totalAttempts > 0 && (
-              <button
-                type="button"
-                className="quiz-btn danger"
-                onClick={() => {
-                  if (
-                    confirm(
-                      "Clear all saved progress for this browser? This cannot be undone."
-                    )
-                  ) {
-                    clearProgress();
-                    setProgress(emptyStore());
-                  }
-                }}
-              >
-                Clear saved stats
-              </button>
-            )}
-          </div>
-        </div>
+        <QuizMenu
+          bank={bank}
+          summary={summary}
+          weakRows={weakRows}
+          rangeMode={rangeMode}
+          customMin={customMin}
+          customMax={customMax}
+          shuffleOn={shuffleOn}
+          practiceWeakOnly={practiceWeakOnly}
+          filtered={filtered}
+          rangeSelectValue={rangeSelectValue}
+          onRangeSelectChange={onRangeSelectChange}
+          onCustomMinChange={setCustomMin}
+          onCustomMaxChange={setCustomMax}
+          onShuffleChange={setShuffleOn}
+          onWeakOnlyChange={setPracticeWeakOnly}
+          onStartQuiz={startQuiz}
+          onClearProgress={() => {
+            if (
+              confirm(
+                "Clear all saved progress for this browser? This cannot be undone."
+              )
+            ) {
+              clearProgress();
+              setProgress(emptyStore());
+            }
+          }}
+        />
       </div>
     );
   }
@@ -429,99 +288,23 @@ export default function App() {
 
   return (
     <div className="quiz-app">
-      <h1>GH-300 practice</h1>
-
-      <div className="quiz-progress-bar">
-        <div
-          className="quiz-progress-fill"
-          style={{ width: `${progressPct}%` }}
-        />
-      </div>
-
-      <div className="quiz-progress">
-        <span>
-          Question {idx + 1} of {deck.length} · Q-ID {q.id}
-        </span>
-        <span>
-          Session score{" "}
-          {completed > 0 ? `${correctCount} / ${completed}` : "—"}
-        </span>
-      </div>
-
-      {sessionStats && sessionStats.attempts > 0 && (
-        <div className="quiz-history">
-          Your history on Q{q.id}:{" "}
-          <strong>{sessionStats.correct}</strong> / {sessionStats.attempts}{" "}
-          correct · <strong>{sessionStats.wrong}</strong> missed
-        </div>
-      )}
-
-      <p className="quiz-stem">{q.stem}</p>
-      <p className="quiz-hint">
-        {isMulti
-          ? `Select ${q.selectCount} answers.`
-          : "Select one answer."}{" "}
-        Keyboard: A–E.
-      </p>
-
-      <div className="quiz-options" role={isMulti ? "group" : "radiogroup"}>
-        {q.choiceOrder.map((key) => {
-          const text = q.choices[key] ?? "";
-          const isSel = selected.has(key);
-          const isCorrect = q.answers.includes(key);
-          let cls = "quiz-option";
-          if (isSel) cls += " selected";
-          if (showResult) {
-            if (isCorrect) cls += " correct";
-            else if (isSel) cls += " wrong";
-          }
-          return (
-            <button
-              key={key}
-              type="button"
-              className={cls}
-              disabled={showResult}
-              onClick={() => toggle(key)}
-              aria-pressed={isSel}
-            >
-              <span className="key">{key}</span>
-              <span>{text}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="quiz-actions">
-        {!showResult ? (
-          <button
-            type="button"
-            className="quiz-btn primary"
-            disabled={selected.size !== q.selectCount}
-            onClick={doCheck}
-          >
-            Check answer
-          </button>
-        ) : (
-          <button type="button" className="quiz-btn primary" onClick={nextQ}>
-            {idx >= deck.length - 1 ? "Finish" : "Next question"}
-          </button>
-        )}
-        <button type="button" className="quiz-btn" onClick={exitQuiz}>
-          Exit to menu
-        </button>
-      </div>
-
-      {showResult && (
-        <div className="quiz-meta">
-          {answered ? (
-            <p>Correct.</p>
-          ) : (
-            <p>
-              Incorrect. Correct: {[...q.answers].sort().join(", ")}.
-            </p>
-          )}
-        </div>
-      )}
+      <QuizSession
+        deck={deck}
+        idx={idx}
+        q={q}
+        selected={selected}
+        correctCount={correctCount}
+        progressPct={progressPct}
+        completed={completed}
+        answered={answered}
+        sessionStats={sessionStats}
+        isMulti={isMulti}
+        showResult={showResult}
+        onToggle={toggle}
+        onCheck={doCheck}
+        onNext={nextQ}
+        onExit={exitQuiz}
+      />
     </div>
   );
 }
